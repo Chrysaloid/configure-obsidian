@@ -73,7 +73,7 @@ chmod +x ~/.shortcuts/*
 chmod +x ~/.shortcuts/tasks/*
 
 # only when dir does not exist
-if [ -d /storage/emulated/0/Documents/Worldbuilding ]; then
+if [ ! -d /storage/emulated/0/Documents/Worldbuilding ]; then
    cd /storage/emulated/0/Documents/
 
 	# will quote "unusual" characters in the pathname by enclosing the pathname in double-quotes and
