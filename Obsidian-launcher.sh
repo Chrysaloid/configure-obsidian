@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Starting Obsidian launcher"
+
 set -u # is a Bash option that makes your script fail fast on undefined variables
 
 VERBOSE="${1:-false}"

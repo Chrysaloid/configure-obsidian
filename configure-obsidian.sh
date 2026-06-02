@@ -57,7 +57,7 @@ mkdir     -p                  .shortcuts/icons
 chmod     -R a-x,u=rwX,go-rwx .shortcuts/icons
 
 # only when file does not exist
-if [ ! -f ".shortcuts/icons/Obsidian launcher.png" ]; then
+if [[ ! -f ".shortcuts/icons/Obsidian launcher.png" ]]; then
    curl --output ".shortcuts/icons/Obsidian launcher.png" https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/2023_Obsidian_logo.svg/500px-2023_Obsidian_logo.svg.png
    echo ""
 fi
@@ -73,14 +73,14 @@ chmod +x ~/.shortcuts/*
 chmod +x ~/.shortcuts/tasks/*
 
 # only when dir does not exist
-if [ ! -d /storage/emulated/0/Documents/Worldbuilding ]; then
+if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
    cd /storage/emulated/0/Documents/
 
-	# will quote "unusual" characters in the pathname by enclosing the pathname in double-quotes and
-	# escaping those characters with backslashes in the same way C escapes control characters (e.g.
-	# \t for TAB, \n for LF, \\ for backslash) or bytes with values larger than 0x80 (e.g. octal
-	# \302\265 for "micro" in UTF-8)
-	git config --global core.quotepath false
+   # will quote "unusual" characters in the pathname by enclosing the pathname in double-quotes and
+   # escaping those characters with backslashes in the same way C escapes control characters (e.g.
+   # \t for TAB, \n for LF, \\ for backslash) or bytes with values larger than 0x80 (e.g. octal
+   # \302\265 for "micro" in UTF-8)
+   git config --global core.quotepath false
 
    gh repo clone Michal-Roman0/Worldbuilding
    cd Worldbuilding
