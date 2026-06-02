@@ -88,6 +88,7 @@ if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
    # skip checking for changes and updating files that are frequently changed by Obsidian
    git update-index --skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
    git update-index --skip-worktree .obsidian/workspace.json
+   git update-index --skip-worktree .obsidian/workspace-mobile.json
    # also skip this file if you want to ex. edit font or other UI styles
    # git update-index --skip-worktree ".obsidian/themes/ITS Theme/theme.css"
 
