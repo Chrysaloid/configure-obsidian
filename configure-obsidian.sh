@@ -9,13 +9,13 @@
 # Then open Termux:API app and grant it "Disable android battery optimisation" and "Display over other apps" perrmisions (there will be buttons to do this, just click them)
 
 # Use this command to run this script in its most updated version:
-# curl -fsSL --compressed "https://drive.usercontent.google.com/download?id=1k6qe0BszlHfn3szhilecsMMX6igvqYQu&export=download&confirm" | bash
+# curl -fsSL --compressed "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/configure-obsidian.sh" | bash
 # Explanation:
-# This command downloads the script from Google Drive and runs it using bash
+# This command downloads the script from GitHub and runs it using bash
 # curl -f option means "fail on HTTP errors" (don't pipe ex. a 404 page into bash)
 # curl -s option means "Silent mode" so curl won't print anything on it's own, only bash will then print various outpus while running this script
 # curl -S option means "still show errors when -s is used" (they will be printed on stderr so they will NOT be piped do bash)
-# curl -L option means "Follow redirects", necessary as Google uses them
+# curl -L option means "Follow redirects", necessary as GitHub uses them sometimes
 # curl --compressed option causes curl to send "Accept-Encoding: deflate, gzip, br, zstd"
 
 # After running this script:
@@ -62,10 +62,18 @@ if [ ! -f ".shortcuts/icons/Obsidian launcher.png" ]; then
    echo ""
 fi
 
-# only when dir exists
+# the shortcut we create will first download it's newest version then run it. We pass all arguments to it
+cat > ".shortcuts/tasks/Obsidian launcher" <<'EOF'
+#!/bin/bash
+curl -fsSL --compressed "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/Obsidian-launcher.sh" | bash -s -- "$@"
+EOF
+
+# make scripts executable
+chmod +x ~/.shortcuts/*
+chmod +x ~/.shortcuts/tasks/*
+
+# only when dir does not exist
 if [ -d /storage/emulated/0/Documents/Worldbuilding ]; then
-	cd /storage/emulated/0/Documents/Worldbuilding
-else # only when dir does not exist
    cd /storage/emulated/0/Documents/
 
 	# will quote "unusual" characters in the pathname by enclosing the pathname in double-quotes and
@@ -90,13 +98,6 @@ else # only when dir does not exist
 
    echo ""
 fi
-
-# copy launcher script to a correct location and remove its extension
-cp -u "Obsidian launcher.sh" ~/".shortcuts/tasks/Obsidian launcher"
-
-# make scripts executable
-chmod +x ~/.shortcuts/*
-chmod +x ~/.shortcuts/tasks/*
 
 # run launcher script
 ~/".shortcuts/tasks/Obsidian launcher" true

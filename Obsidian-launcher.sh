@@ -43,8 +43,4 @@ run_step "git reset" git reset --hard HEAD || exit $?
 run_step "git pull" git pull || exit $?
 run_step "open obsidian" am start -n md.obsidian/md.obsidian.MainActivity || exit $?
 
-# copy launcher script to a correct location and remove its extension
-# the effect of changes will be visible on the next launch
-cp -u "Obsidian launcher.sh" ~/".shortcuts/tasks/Obsidian launcher"
-
 termux-toast -s "Happy reading! 😄"
