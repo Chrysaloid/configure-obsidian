@@ -39,7 +39,7 @@ set -e # Exit immediately on error
 echo ""
 # pkg update -y
 pkg upgrade -y -o Dpkg::Options::="--force-confold"
-pkg install -y git gh termux-api
+pkg install -y git gh termux-api jq
 echo ""
 
 # login only when not logged in
@@ -58,15 +58,18 @@ chmod     -R a-x,u=rwX,go-rwx .shortcuts/icons
 
 # only when file does not exist
 if [[ ! -f ".shortcuts/icons/Obsidian launcher.png" ]]; then
-   curl --output ".shortcuts/icons/Obsidian launcher.png" https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/2023_Obsidian_logo.svg/500px-2023_Obsidian_logo.svg.png
-   echo ""
+	curl --output ".shortcuts/icons/Obsidian launcher.png" https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/2023_Obsidian_logo.svg/500px-2023_Obsidian_logo.svg.png
+	echo ""
 fi
 
 # the shortcut we create will first download it's newest version then run it. We pass all arguments to it
-cat > ".shortcuts/tasks/Obsidian launcher" <<'EOF'
-#!/bin/bash
-curl -fsSL --compressed "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/Obsidian-launcher.sh" | bash -s -- "$@"
-EOF
+curl -fsSL --compressed -o ".shortcuts/tasks/Obsidian launcher" "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/real-Obsidian-launcher.sh"
+# -f -> Fail fast with no output on HTTP errors
+# -o -> Write to file instead of stdout
+# -s -> Silent mode
+# -S -> Show error even when -s is used
+# -L -> Follow redirects
+# --compressed -> Request compressed response
 
 # make scripts executable
 chmod +x ~/.shortcuts/*
@@ -74,33 +77,33 @@ chmod +x ~/.shortcuts/tasks/*
 
 # only when dir does not exist
 if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
-   cd /storage/emulated/0/Documents/
+	cd /storage/emulated/0/Documents/
 
-   # core.quotepath true will quote "unusual" characters in the pathname by enclosing the pathname
-   # in double-quotes and escaping those characters with backslashes in the same way C escapes
-   # control characters (e.g. \t for TAB, \n for LF, \\ for backslash) or bytes with values larger
-   # than 0x80 (e.g. octal \302\265 for "micro" in UTF-8). core.quotepath false will not do that
-   git config --global core.quotepath false
+	# core.quotepath true will quote "unusual" characters in the pathname by enclosing the pathname
+	# in double-quotes and escaping those characters with backslashes in the same way C escapes
+	# control characters (e.g. \t for TAB, \n for LF, \\ for backslash) or bytes with values larger
+	# than 0x80 (e.g. octal \302\265 for "micro" in UTF-8). core.quotepath false will not do that
+	git config --global core.quotepath false
 
 	# set correct git user using gh api
 	git config --global user.name "$(gh api user --jq .login)"
 	git config --global user.email "$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
 
-   gh repo clone Michal-Roman0/Worldbuilding
-   cd Worldbuilding
+	gh repo clone Michal-Roman0/Worldbuilding
+	cd Worldbuilding
 
-   # skip checking for changes and updating files that are frequently changed by Obsidian
-   git update-index --skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
-   git update-index --skip-worktree .obsidian/workspace.json
-   # also skip this file if you want to ex. edit font or other UI styles
-   # git update-index --skip-worktree ".obsidian/themes/ITS Theme/theme.css"
+	# skip checking for changes and updating files that are frequently changed by Obsidian
+	git update-index --skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
+	git update-index --skip-worktree .obsidian/workspace.json
+	# also skip this file if you want to ex. edit font or other UI styles
+	# git update-index --skip-worktree ".obsidian/themes/ITS Theme/theme.css"
 
-   # to undo above commands use the following commands
-   # git update-index --no-skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
-   # git update-index --no-skip-worktree .obsidian/workspace.json
-   # git update-index --no-skip-worktree ".obsidian/themes/ITS Theme/theme.css"
+	# to undo above commands use the following commands
+	# git update-index --no-skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
+	# git update-index --no-skip-worktree .obsidian/workspace.json
+	# git update-index --no-skip-worktree ".obsidian/themes/ITS Theme/theme.css"
 
-   echo ""
+	echo ""
 fi
 
 # run launcher script

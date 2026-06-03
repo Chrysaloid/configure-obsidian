@@ -7,34 +7,32 @@ set -u # is a Bash option that makes your script fail fast on undefined variable
 VERBOSE="${1:-false}"
 
 run_step() {
-   local name="$1"
-   shift
-   local cmd=("$@")
+	local name="$1"
+	shift
+	local cmd=("$@")
 
-   local output
-   local exitCode
+	local output
+	local exitCode
 
-   output="$("${cmd[@]}" 2>&1)"
-   exitCode=$?
+	output="$("${cmd[@]}" 2>&1)"
+	exitCode=$?
 
-   if [ "$VERBOSE" = "true" ]; then
-      echo "$output"
-   fi
+	if [ "$VERBOSE" = "true" ]; then
+		echo "$output"
+	fi
 
-   if [ $exitCode -ne 0 ]; then
-      termux-toast -s "❌ Error in: $name (output copied to clipboard)"
+	if [ $exitCode -ne 0 ]; then
+		failOutput="Command: $name"$'\n'"Exit code: $exitCode"$'\n'"$output"
+		termux-clipboard-set "$failOutput"
 
-      {
-         echo "Command: $name"
-         echo "Exit code: $exitCode"
-         echo
-         echo "$output"
-      } | termux-clipboard-set
+		if [[ "$(termux-dialog confirm -t "❌ Launch failed. Do you still want to open Obsidian?" -i "Fail output (it was copied to clipboard): $failOutput" | jq -r .text)" == "yes" ]]; then
+			am start -n md.obsidian/md.obsidian.MainActivity
+		fi
 
-      return $exitCode
-   fi
+		return $exitCode
+	fi
 
-   return 0
+	return 0
 }
 
 cd /storage/emulated/0/Documents/Worldbuilding
