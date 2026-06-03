@@ -75,6 +75,9 @@ curl -fsSL --compressed -o ".shortcuts/tasks/Obsidian launcher" "https://raw.git
 chmod +x ~/.shortcuts/*
 chmod +x ~/.shortcuts/tasks/*
 
+# remove old cached scripts just in case
+rm -rf .tmp_curl_files
+
 # only when dir does not exist
 if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
 	cd /storage/emulated/0/Documents/
