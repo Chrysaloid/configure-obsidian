@@ -12,6 +12,7 @@ cd .tmp_curl_files
 
 # Run curl to fetch the launcher script from GitHub with smart caching and robust error handling:
 # --silent: suppresses progress output for clean script execution
+# --fail: fail with error code 22 and with no response body for HTTP response codes at 400 or greater (prevents overwriting the existing script with error response)
 # --show-error: still display errors on stderr if the request fails
 # --location: follow redirects (required for GitHub/CDN routing)
 # --compressed: accept and automatically decompress encoded responses
@@ -27,6 +28,7 @@ cd .tmp_curl_files
 http_code="$(
 	curl \
 		--silent \
+		--fail \
 		--show-error \
 		--location \
 		--compressed \
@@ -54,4 +56,5 @@ if [[ $curlExitCode -ne 0 ]]; then # when curl returned error exit code
 fi
 
 # run script and pass all arguments of this script to it
-bash "$scriptFile" -- "$@"
+bash -e "$scriptFile" -- "$@"
+# -e: exit immediately on error
