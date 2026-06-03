@@ -17,8 +17,8 @@ http_code="$(
 		--compressed \
 		--etag-save "$etagFile" \
 		--etag-compare "$etagFile" \
-		-o "$scriptFile" \
-		-w "%{http_code}" \
+		--output "$scriptFile" \
+		--write-out "%{http_code}" \
 		"https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/$scriptFile"
 )"
 curlExitCode=$?
