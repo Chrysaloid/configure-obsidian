@@ -76,11 +76,15 @@ chmod +x ~/.shortcuts/tasks/*
 if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
    cd /storage/emulated/0/Documents/
 
-   # will quote "unusual" characters in the pathname by enclosing the pathname in double-quotes and
-   # escaping those characters with backslashes in the same way C escapes control characters (e.g.
-   # \t for TAB, \n for LF, \\ for backslash) or bytes with values larger than 0x80 (e.g. octal
-   # \302\265 for "micro" in UTF-8)
+   # core.quotepath true will quote "unusual" characters in the pathname by enclosing the pathname
+   # in double-quotes and escaping those characters with backslashes in the same way C escapes
+   # control characters (e.g. \t for TAB, \n for LF, \\ for backslash) or bytes with values larger
+   # than 0x80 (e.g. octal \302\265 for "micro" in UTF-8). core.quotepath false will not do that
    git config --global core.quotepath false
+
+	# set correct git user using gh api
+	git config --global user.name "$(gh api user --jq .login)"
+	git config --global user.email "$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
 
    gh repo clone Michal-Roman0/Worldbuilding
    cd Worldbuilding
