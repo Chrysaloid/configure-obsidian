@@ -10,10 +10,10 @@ mkdir -p .tmp_curl_files
 cd .tmp_curl_files
 
 # these files will be created in that hidden folder
-etagFile="Obsidian-launcher.etag"
-scriptFile="Obsidian-launcher.sh"
-logFile="logFile"
-exitFile="exitFile"
+ETAG_FILE="Obsidian-launcher.etag"
+SCRIPT_FILE="Obsidian-launcher.sh"
+LOG_FILE="LOG_FILE"
+EXIT_FILE="EXIT_FILE"
 
 # Run curl to fetch the launcher script from GitHub with smart caching and robust error handling:
 # --silent: suppresses progress output for clean script execution
@@ -21,9 +21,9 @@ exitFile="exitFile"
 # --show-error: still display errors on stderr if the request fails
 # --location: follow redirects (required for GitHub/CDN routing)
 # --compressed: accept and automatically decompress encoded responses
-# --etag-save "$etagFile": store server ETag for future cache validation
-# --etag-compare "$etagFile": send previous ETag to enable 304 Not Modified responses
-# --output "$scriptFile": save downloaded script to local file
+# --etag-save "$ETAG_FILE": store server ETag for future cache validation
+# --etag-compare "$ETAG_FILE": send previous ETag to enable 304 Not Modified responses
+# --output "$SCRIPT_FILE": save downloaded script to local file
 # --write-out "%{http_code}": output HTTP status code (e.g. 200, 304, 404) after request to stdout
 #
 # The command substitution captures ONLY the HTTP status code into http_code.
@@ -37,11 +37,11 @@ http_code="$(
 		--show-error \
 		--location \
 		--compressed \
-		--etag-save "$etagFile" \
-		--etag-compare "$etagFile" \
-		--output "$scriptFile" \
+		--etag-save "$ETAG_FILE" \
+		--etag-compare "$ETAG_FILE" \
+		--output "$SCRIPT_FILE" \
 		--write-out "%{http_code}" \
-		"https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/$scriptFile"
+		"https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/$SCRIPT_FILE"
 )"
 lastExitCode=$?
 
@@ -58,17 +58,17 @@ else
 	echo "Starting Obsidian launcher"
 	# run script and pass all arguments of this script to it also stream to current console and save to file
 	{
-		bash -e "$scriptFile" -- "$@"
+		bash -e "$SCRIPT_FILE" -- "$@"
 		# -e: exit immediately on error
 		# -u: Treat unset variables and parameters as an error when performing parameter expansion
-		echo $? > "$exitFile" # exit code is preserved separately (critical because pipes hide $?)
-	} 2>&1 | tee "$logFile"
-	lastExitCode="$(cat "$exitFile")"
+		echo $? > "$EXIT_FILE" # exit code is preserved separately (critical because pipes hide $?)
+	} 2>&1 | tee "$LOG_FILE"
+	lastExitCode="$(cat "$EXIT_FILE")"
 fi
 
 if [[ $lastExitCode != 0 && "$configRun" == "false" ]]; then # when curl or bash returned error exit code and we are not during config
 	if [[ -z "$failReason" ]]; then # check for empty string, will be empty when bash returned error exit code
-		failReason="$(cat "$logFile")"
+		failReason="$(cat "$LOG_FILE")"
 	fi
 	termux-clipboard-set "$failReason"
 	if [[ "$(termux-dialog confirm -t "❌ Launch failed. Report this to Chrysaloid. Do you still want to open Obsidian?" -i "Fail reason (it was copied to clipboard):"$'\n'"$failReason" | jq -r .text)" = "yes" ]]; then
