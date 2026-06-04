@@ -2,13 +2,18 @@
 
 # this script will be downloaded once and put in ".shortcuts/tasks/Obsidian launcher"
 
-etagFile="Obsidian-launcher.etag"
-scriptFile="Obsidian-launcher.sh"
+configRun="${1:-false}"
 
 # create hidden folder for caching files and go into it
 cd ~/
 mkdir -p .tmp_curl_files
 cd .tmp_curl_files
+
+# these files will be created in that hidden folder
+etagFile="Obsidian-launcher.etag"
+scriptFile="Obsidian-launcher.sh"
+logFile="logFile"
+exitFile="exitFile"
 
 # Run curl to fetch the launcher script from GitHub with smart caching and robust error handling:
 # --silent: suppresses progress output for clean script execution
@@ -22,7 +27,7 @@ cd .tmp_curl_files
 # --write-out "%{http_code}": output HTTP status code (e.g. 200, 304, 404) after request to stdout
 #
 # The command substitution captures ONLY the HTTP status code into http_code.
-# curlExitCode ($?) captures curl's process exit status:
+# lastExitCode ($?) captures curl's process exit status:
 #   0  = success (including 304 Not Modified)
 #   non-zero = network or HTTP-level failure (e.g. DNS error, timeout, 404 with --fail)
 http_code="$(
@@ -38,23 +43,35 @@ http_code="$(
 		--write-out "%{http_code}" \
 		"https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/$scriptFile"
 )"
-curlExitCode=$?
+lastExitCode=$?
 
-if [[ $curlExitCode -ne 0 ]]; then # when curl returned error exit code
-	case $curlExitCode in
-		6) errorReason="Could not resolve host" ;;
-		7) errorReason="Could not connect to server" ;;
-		22) errorReason="HTTP error $http_code" ;;
-		28) errorReason="Connection timed out" ;;
-		*) errorReason="Download failed (curl exit code $curlExitCode)" ;;
+failReason=""
+if [[ $lastExitCode != 0 ]]; then # when curl returned error exit code
+	case $lastExitCode in
+		6) failReason="Could not resolve host" ;;
+		7) failReason="Could not connect to server" ;;
+		22) failReason="HTTP error $http_code" ;;
+		28) failReason="Connection timed out" ;;
+		*) failReason="Download failed (curl exit code $lastExitCode)" ;;
 	esac
-	termux-clipboard-set "$errorReason"
-	if [[ "$(termux-dialog confirm -t "❌ Launch failed. Do you still want to open Obsidian?" -i "Fail reason (it was copied to clipboard):"$'\n'"$errorReason" | jq -r .text)" = "yes" ]]; then
-		am start -n md.obsidian/md.obsidian.MainActivity
-	fi
-	exit $curlExitCode
+else
+	echo "Starting Obsidian launcher"
+	# run script and pass all arguments of this script to it also stream to current console and save to file
+	{
+		bash -e "$scriptFile" -- "$@"
+		# -e: exit immediately on error
+		# -u: Treat unset variables and parameters as an error when performing parameter expansion
+		echo $? > "$exitFile" # exit code is preserved separately (critical because pipes hide $?)
+	} 2>&1 | tee "$logFile"
+	lastExitCode="$(cat "$exitFile")"
 fi
 
-# run script and pass all arguments of this script to it
-bash -e "$scriptFile" -- "$@"
-# -e: exit immediately on error
+if [[ $lastExitCode != 0 && "$configRun" == "false" ]]; then # when curl or bash returned error exit code and we are not during config
+	if [[ -z "$failReason" ]]; then # check for empty string, will be empty when bash returned error exit code
+		failReason="$(cat "$logFile")"
+	fi
+	termux-clipboard-set "$failReason"
+	if [[ "$(termux-dialog confirm -t "❌ Launch failed. Do you still want to open Obsidian?" -i "Fail reason (it was copied to clipboard):"$'\n'"$failReason" | jq -r .text)" = "yes" ]]; then
+		am start -n md.obsidian/md.obsidian.MainActivity
+	fi
+fi
