@@ -35,7 +35,8 @@ handle_errors() {
 	if [[ $exit_code != 0 ]]; then
 		local line=$1
 		local failReason
-		wait # flush tee before reading the log
+		exec 1>&- 2>&- # close stdout and stderr, signaling EOF to tee
+		wait           # now tee sees EOF, flushes, and exits
 		failReason="Error at line $line:"$'\n'"$(cat "$LOG_FILE")"
 		termux-clipboard-set "$failReason"
 		if [[ "$(termux-dialog confirm \
