@@ -5,10 +5,11 @@
 # It self-updates via GitHub, then syncs the Obsidian vault and launches Obsidian
 # On any failure it shows a dialog offering to open Obsidian anyway
 
-set -eu -o pipefail
+set -eEu -o pipefail
 # -e: exit immediately when a command fails
 # -u: treat unset variables as errors
 # -o pipefail: a pipeline fails if any command in it fails, not just the last one
+# -E: ERR trap is inherited by functions, so _error_line is updated even if the failing command is inside a function rather than at the top level
 
 AFTER_UPDATE="${1:-false}"
 
@@ -30,14 +31,14 @@ LOG_FILE="LOG_FILE"
 # also merge stderr and stdout
 exec > >(tee "$LOG_FILE") 2>&1
 
+_error_line=0
 handle_errors() {
 	local exit_code=$?
 	if [[ $exit_code != 0 ]]; then
-		local line=$1
 		local failReason
 		exec 1>&- 2>&- # close stdout and stderr, signaling EOF to tee
 		wait           # now tee sees EOF, flushes, and exits
-		failReason="Error at line $line:"$'\n'"$(cat "$LOG_FILE")"
+		failReason="Line $_error_line produced error. Whole script's output:"$'\n'"$(cat "$LOG_FILE")"
 		termux-clipboard-set "$failReason"
 		if [[ "$(termux-dialog confirm \
 				-t "❌ Launch failed. Report this to Chrysaloid. Do you still want to open Obsidian?" \
@@ -48,7 +49,8 @@ handle_errors() {
 	fi
 }
 
-trap 'handle_errors $LINENO' EXIT
+trap '_error_line=$LINENO' ERR
+trap 'handle_errors' EXIT
 
 if [[ $AFTER_UPDATE == "false" ]]; then
 	echo "Attempting to update $SCRIPT_FILE"
@@ -95,6 +97,7 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 			28) echo "curl: Connection timed out" ;;
 			*)  echo "curl: Download failed (exit code: $curl_exit)" ;;
 		esac
+		_error_line=$LINENO # ERR won't fire on explicit exit, so set it manually
 		exit $curl_exit
 	fi
 
