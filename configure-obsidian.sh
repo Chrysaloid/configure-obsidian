@@ -112,4 +112,4 @@ fi
 # run launcher script
 ~/".shortcuts/tasks/Obsidian launcher" true
 
-echo "----------------- DONE -----------------"
+echo -e "\n----------------- DONE -----------------"
