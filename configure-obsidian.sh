@@ -6,15 +6,15 @@
 # https://f-droid.org/en/packages/com.termux/ (obviously)
 # https://f-droid.org/en/packages/com.termux.api/ (for displaying toast messages)
 # https://f-droid.org/en/packages/com.termux.widget/ (for adding script shortcuts)
-# Then open Termux:API app and grant it "Disable android battery optimisation" and "Display over other apps" perrmisions (there will be buttons to do this, just click them)
+# Then open Termux:API app and grant it "Disable android battery optimisation" and "Display over other apps" permissions (there will be buttons to do this, just click them)
 
 # Use this command to run this script in its most updated version:
 # curl -fsSL --compressed "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/configure-obsidian.sh" | bash
 # Explanation:
 # This command downloads the script from GitHub and runs it using bash
 # curl -f option means "fail on HTTP errors" (don't pipe ex. a 404 page into bash)
-# curl -s option means "Silent mode" so curl won't print anything on it's own, only bash will then print various outpus while running this script
-# curl -S option means "still show errors when -s is used" (they will be printed on stderr so they will NOT be piped do bash)
+# curl -s option means "Silent mode" so curl won't print anything on it's own, only bash will then print various outputs while running this script
+# curl -S option means "still show errors when -s is used" (they will be printed on stderr so they will NOT be piped to bash)
 # curl -L option means "Follow redirects", necessary as GitHub uses them sometimes
 # curl --compressed option causes curl to send "Accept-Encoding: deflate, gzip, br, zstd"
 
@@ -62,8 +62,8 @@ if [[ ! -f ".shortcuts/icons/Obsidian launcher.png" ]]; then
 	echo ""
 fi
 
-# the shortcut we create will first download it's newest version then run it. We pass all arguments to it
-curl -fsSL --compressed -o ".shortcuts/tasks/Obsidian launcher" "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/real-Obsidian-launcher.sh"
+# the shortcut we create will first download its newest version then run it. We pass all arguments to it
+curl -fsSL --compressed -o ".shortcuts/tasks/Obsidian launcher" "https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/Obsidian-launcher.sh"
 # -f -> Fail fast with no output on HTTP errors
 # -o -> Write to file instead of stdout
 # -s -> Silent mode
@@ -82,10 +82,8 @@ rm -rf .tmp_curl_files
 if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
 	cd /storage/emulated/0/Documents/
 
-	# core.quotepath true will quote "unusual" characters in the pathname by enclosing the pathname
-	# in double-quotes and escaping those characters with backslashes in the same way C escapes
-	# control characters (e.g. \t for TAB, \n for LF, \\ for backslash) or bytes with values larger
-	# than 0x80 (e.g. octal \302\265 for "micro" in UTF-8). core.quotepath false will not do that
+	# core.quotepath false disables escaping of non-ASCII characters in filenames
+	# (by default git escapes them as octal sequences like \302\265)
 	git config --global core.quotepath false
 
 	# set correct git user using gh api

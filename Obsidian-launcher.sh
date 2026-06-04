@@ -1,8 +1,116 @@
 #!/bin/bash
 
+# This script is placed in ".shortcuts/tasks/Obsidian launcher" by configure-obsidian.sh
+# Termux:Widget runs it in background (task) mode — no terminal, no stdin
+# It self-updates via GitHub, then syncs the Obsidian vault and launches Obsidian
+# On any failure it shows a dialog offering to open Obsidian anyway
+
+set -eu -o pipefail # exit on error
+# -e: exit immediately when a command fails
+# -u: treat unset variables as errors
+# -o pipefail: a pipeline fails if any command in it fails, not just the last one
+
+AFTER_UPDATE="${1:-false}"
+
+FINAL_FILE=~/".shortcuts/tasks/Obsidian launcher"
+
+# create hidden folder for caching files and go into it
+cd ~/
+mkdir -p .tmp_curl_files
+cd .tmp_curl_files
+
+# these files will be created in that hidden folder
+SCRIPT_FILE="Obsidian-launcher.sh"
+ETAG_FILE="$SCRIPT_FILE.etag"
+TMP_FILE="$SCRIPT_FILE.tmp"
+LOG_FILE="LOG_FILE"
+
+# redirect all subsequent commands to the log file but also print them as they come
+# also merge stderr and stdout
+exec > >(tee "$LOG_FILE") 2>&1
+
+handle_errors() {
+	local exit_code=$?
+	if [[ $exit_code != 0 ]]; then
+		local line=$1
+		local failReason
+		wait # flush tee before reading the log
+		failReason="Error at line $line:"$'\n'"$(cat "$LOG_FILE")"
+		termux-clipboard-set "$failReason"
+		if [[ "$(termux-dialog confirm \
+				-t "❌ Launch failed. Report this to Chrysaloid. Do you still want to open Obsidian?" \
+				-i "Fail reason (it was copied to clipboard):"$'\n'"$failReason" \
+				| jq -r .text)" == "yes" ]]; then
+			am start -n md.obsidian/md.obsidian.MainActivity
+		fi
+	fi
+}
+
+trap 'handle_errors $LINENO' EXIT
+
+if [[ $AFTER_UPDATE == "false" ]]; then
+	# Run curl to fetch the launcher script from GitHub with smart caching and robust error handling:
+	# --silent: suppresses progress output for clean script execution
+	# --fail: fail with error code 22 and with no response body for HTTP response codes at 400 or greater (prevents overwriting the existing script with error response)
+	# --show-error: still display errors on stderr if the request fails
+	# --location: follow redirects (required for GitHub/CDN routing)
+	# --compressed: accept and automatically decompress encoded responses
+	# --etag-save "$ETAG_FILE": store server ETag for future cache validation
+	# --etag-compare "$ETAG_FILE": send previous ETag to enable 304 Not Modified responses
+	# --output "$SCRIPT_FILE": save downloaded script to local file
+	# --write-out "%{http_code}": output HTTP status code (e.g. 200, 304, 404) after request to stdout (it will correctly NOT be captured in LOG_FILE)
+	#
+	# The command substitution captures ONLY the HTTP status code into http_code.
+	# lastExitCode ($?) captures curl's process exit status:
+	#   0  = success (including 304 Not Modified)
+	#   non-zero = network or HTTP-level failure (e.g. DNS error, timeout, 404 with --fail)
+	#
+	# || true would mask the exit code so we temporarily disable set -e for this one command
+	set +e
+	http_code="$(
+		curl \
+			--silent \
+			--fail \
+			--show-error \
+			--location \
+			--compressed \
+			--etag-save "$ETAG_FILE" \
+			--etag-compare "$ETAG_FILE" \
+			--output "$TMP_FILE" \
+			--write-out "%{http_code}" \
+			"https://raw.githubusercontent.com/Chrysaloid/configure-obsidian/main/$SCRIPT_FILE"
+	)"
+	curl_exit=$?
+	set -e
+
+	if [[ $curl_exit != 0 ]]; then
+		case $curl_exit in
+			6)  echo "curl: Could not resolve host" ;;
+			7)  echo "curl: Could not connect to server" ;;
+			22) echo "curl: HTTP error $http_code" ;;
+			28) echo "curl: Connection timed out" ;;
+			*)  echo "curl: Download failed (exit code: $curl_exit)" ;;
+		esac
+		exit $curl_exit
+	fi
+
+	if [[ $http_code == "200" && -s "$TMP_FILE" ]]; then
+		# New version downloaded successfully — atomically replace the running script and re-exec it
+		# mv on the same filesystem is a single rename() syscall, so $FINAL_FILE is never missing or partial
+		mv "$TMP_FILE" "$FINAL_FILE"
+		chmod +x "$FINAL_FILE"
+		# exec replaces the current process entirely so nothing below this block runs
+		exec bash "$FINAL_FILE" true
+	fi
+fi
+
+# 304 Not Modified — script is current, proceed with launch
+
+echo "Starting Obsidian launcher"
+
 cd /storage/emulated/0/Documents/Worldbuilding
 
-# discards local changes, get the new changes and start obsidian if everything went OK
+# discard local changes, get the new changes and start obsidian if everything went OK
 rm -rf .trash
 git reset --hard HEAD
 git pull
