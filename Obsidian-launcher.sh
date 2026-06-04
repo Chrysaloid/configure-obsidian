@@ -50,6 +50,8 @@ handle_errors() {
 trap 'handle_errors $LINENO' EXIT
 
 if [[ $AFTER_UPDATE == "false" ]]; then
+	echo "Attempting to update $SCRIPT_FILE"
+
 	# Run curl to fetch the launcher script from GitHub with smart caching and robust error handling:
 	# --silent: suppresses progress output for clean script execution
 	# --fail: fail with error code 22 and with no response body for HTTP response codes at 400 or greater (prevents overwriting the existing script with error response)
@@ -96,6 +98,8 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	fi
 
 	if [[ $http_code == "200" && -s "$TMP_FILE" ]]; then
+		echo "$SCRIPT_FILE was updated"
+
 		# New version downloaded successfully — atomically replace the running script and re-exec it
 		# mv on the same filesystem is a single rename() syscall, so $FINAL_FILE is never missing or partial
 		mv "$TMP_FILE" "$FINAL_FILE"
@@ -103,6 +107,8 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 		# exec replaces the current process entirely so nothing below this block runs
 		exec bash "$FINAL_FILE" true
 	fi
+
+	echo "$SCRIPT_FILE was already up to date"
 fi
 
 # 304 Not Modified (or re-exec after update) — script is current, proceed with launch
