@@ -5,7 +5,7 @@
 # It self-updates via GitHub, then syncs the Obsidian vault and launches Obsidian
 # On any failure it shows a dialog offering to open Obsidian anyway
 
-set -eu -o pipefail # exit on error
+set -eu -o pipefail
 # -e: exit immediately when a command fails
 # -u: treat unset variables as errors
 # -o pipefail: a pipeline fails if any command in it fails, not just the last one
@@ -25,7 +25,8 @@ ETAG_FILE="$SCRIPT_FILE.etag"
 TMP_FILE="$SCRIPT_FILE.tmp"
 LOG_FILE="LOG_FILE"
 
-# redirect all subsequent commands to the log file but also print them as they come
+# redirect all subsequent stdout and stderr to $LOG_FILE while still printing to the terminal
+# must come before the trap so error messages are captured in the log too
 # also merge stderr and stdout
 exec > >(tee "$LOG_FILE") 2>&1
 
@@ -57,15 +58,15 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	# --compressed: accept and automatically decompress encoded responses
 	# --etag-save "$ETAG_FILE": store server ETag for future cache validation
 	# --etag-compare "$ETAG_FILE": send previous ETag to enable 304 Not Modified responses
-	# --output "$SCRIPT_FILE": save downloaded script to local file
-	# --write-out "%{http_code}": output HTTP status code (e.g. 200, 304, 404) after request to stdout (it will correctly NOT be captured in LOG_FILE)
+	# --output "$TMP_FILE": save downloaded content to temp file (not touched at all on 304)
+	# --write-out "%{http_code}": output HTTP status code (e.g. 200, 304, 404) after request to stdout
 	#
 	# The command substitution captures ONLY the HTTP status code into http_code.
-	# lastExitCode ($?) captures curl's process exit status:
+	# curl_exit captures curl's process exit status:
 	#   0  = success (including 304 Not Modified)
 	#   non-zero = network or HTTP-level failure (e.g. DNS error, timeout, 404 with --fail)
 	#
-	# || true would mask the exit code so we temporarily disable set -e for this one command
+	# || true would mask curl_exit so we temporarily disable set -e for this one command
 	set +e
 	http_code="$(
 		curl \
@@ -104,13 +105,13 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	fi
 fi
 
-# 304 Not Modified — script is current, proceed with launch
+# 304 Not Modified (or re-exec after update) — script is current, proceed with launch
 
 echo "Starting Obsidian launcher"
 
 cd /storage/emulated/0/Documents/Worldbuilding
 
-# discard local changes, get the new changes and start obsidian if everything went OK
+# discard local changes, get the new changes and start Obsidian if everything went OK
 rm -rf .trash
 git reset --hard HEAD
 git pull
