@@ -35,9 +35,9 @@ cd ~/ # make sure we are in the home folder
 
 set -e # Exit immediately on error
 
+echo -e "----------------- START -----------------\n"
+
 # upgrade and install packages non-interactively
-echo ""
-# pkg update -y
 pkg upgrade -y -o Dpkg::Options::="--force-confold"
 pkg install -y git gh termux-api jq
 echo ""
