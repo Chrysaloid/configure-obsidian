@@ -71,7 +71,7 @@ if [[ $lastExitCode != 0 && "$configRun" == "false" ]]; then # when curl or bash
 		failReason="$(cat "$logFile")"
 	fi
 	termux-clipboard-set "$failReason"
-	if [[ "$(termux-dialog confirm -t "❌ Launch failed. Do you still want to open Obsidian?" -i "Fail reason (it was copied to clipboard):"$'\n'"$failReason" | jq -r .text)" = "yes" ]]; then
+	if [[ "$(termux-dialog confirm -t "❌ Launch failed. Report this to Chrysaloid. Do you still want to open Obsidian?" -i "Fail reason (it was copied to clipboard):"$'\n'"$failReason" | jq -r .text)" = "yes" ]]; then
 		am start -n md.obsidian/md.obsidian.MainActivity
 	fi
 fi
