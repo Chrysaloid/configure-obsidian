@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script is placed in ".shortcuts/tasks/Obsidian launcher" by configure-obsidian.sh
-# Termux:Widget runs it in background (task) mode — no terminal, no stdin
+# Termux:Widget runs it in background (task) mode - no terminal, no stdin
 # It self-updates via GitHub, then syncs the Obsidian vault and launches Obsidian
 # On any failure it shows a dialog offering to open Obsidian anyway
 
@@ -61,6 +61,7 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	# --show-error: still display errors on stderr if the request fails
 	# --location: follow redirects (required for GitHub/CDN routing)
 	# --compressed: accept and automatically decompress encoded responses
+	# --connect-timeout: maximum time in seconds that you allow curl's connection to take
 	# --etag-save "$ETAG_FILE": store server ETag for future cache validation
 	# --etag-compare "$ETAG_FILE": send previous ETag to enable 304 Not Modified responses
 	# --output "$TMP_FILE": save downloaded content to temp file (not touched at all on 304)
@@ -80,6 +81,7 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 			--show-error \
 			--location \
 			--compressed \
+			--connect-timeout 5 \
 			--etag-save "$ETAG_FILE" \
 			--etag-compare "$ETAG_FILE" \
 			--output "$TMP_FILE" \
@@ -91,20 +93,32 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 
 	if [[ $curl_exit != 0 ]]; then
 		case $curl_exit in
-			6)  echo "curl: Could not resolve host" ;;
-			7)  echo "curl: Could not connect to server" ;;
-			22) echo "curl: HTTP error $http_code" ;;
-			28) echo "curl: Connection timed out" ;;
-			*)  echo "curl: Download failed (exit code: $curl_exit)" ;;
+			# no internet: DNS failure (Could not resolve host) | failed to connect to host | timeout
+			6|7|28)
+				if [[ "$(termux-dialog confirm \
+						-t "❌ There is no Internet connection. Do you still want to open Obsidian?" \
+						-i "If no then enable Internet yourself and try again" \
+						| jq -r .text)" == "yes" ]]; then
+					am start -n md.obsidian/md.obsidian.MainActivity
+				fi
+				exit 0
+				;;
+			*)
+				_error_line=$LINENO # ERR won't fire on explicit exit, so set it manually
+				exit $curl_exit
+				;;
 		esac
-		_error_line=$LINENO # ERR won't fire on explicit exit, so set it manually
-		exit $curl_exit
 	fi
 
-	if [[ $http_code == "200" && -s "$TMP_FILE" ]]; then
+	if [[ $http_code == "200" ]]; then
+		if [[ ! -s "$TMP_FILE" ]]; then
+			# GitHub returned 200 but the response body was empty - this should never happen
+			# and likely indicates a bug in curl or a GitHub-side issue; treat it as an error
+			echo "curl: Downloaded file is empty" && false
+		fi
 		echo "$SCRIPT_FILE was updated"
 
-		# New version downloaded successfully — atomically replace the running script and re-exec it
+		# New version downloaded successfully - atomically replace the running script and re-exec it
 		# mv on the same filesystem is a single rename() syscall, so $FINAL_FILE is never missing or partial
 		mv "$TMP_FILE" "$FINAL_FILE"
 		chmod +x "$FINAL_FILE"
@@ -115,7 +129,7 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	echo "$SCRIPT_FILE was already up to date"
 fi
 
-# 304 Not Modified (or re-exec after update) — script is current, proceed with launch
+# 304 Not Modified (or re-exec after update) - script is current, proceed with launch
 
 echo "Starting Obsidian launcher"
 
