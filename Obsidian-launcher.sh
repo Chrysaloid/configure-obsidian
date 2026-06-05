@@ -91,24 +91,23 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 	curl_exit=$?
 	set -e
 
-	if [[ $curl_exit != 0 ]]; then
-		case $curl_exit in
+	case $curl_exit in
+		0) ;; # success, do nothing
+		6|7|28)
 			# no internet: DNS failure (Could not resolve host) | failed to connect to host | timeout
-			6|7|28)
-				if [[ "$(termux-dialog confirm \
-						-t "❌ There is no Internet connection. Do you still want to open Obsidian?" \
-						-i "If no then enable Internet yourself and try again" \
-						| jq -r .text)" == "yes" ]]; then
-					am start -n md.obsidian/md.obsidian.MainActivity
-				fi
-				exit 0
-				;;
-			*)
-				_error_line=$LINENO # ERR won't fire on explicit exit, so set it manually
-				exit $curl_exit
-				;;
-		esac
-	fi
+			if [[ "$(termux-dialog confirm \
+					-t "❌ There is no Internet connection. Do you still want to open Obsidian?" \
+					-i "If no then enable Internet yourself and try again" \
+					| jq -r .text)" == "yes" ]]; then
+				am start -n md.obsidian/md.obsidian.MainActivity
+			fi
+			exit 0
+			;;
+		*)
+			_error_line=$LINENO # ERR won't fire on explicit exit, so set it manually
+			exit $curl_exit
+			;;
+	esac
 
 	if [[ $http_code == "200" ]]; then
 		if [[ ! -s "$TMP_FILE" ]]; then
