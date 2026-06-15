@@ -93,9 +93,10 @@ if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
 	gh repo clone Michal-Roman0/Worldbuilding
 	cd Worldbuilding
 
-	# skip checking for changes and updating files that are frequently changed by Obsidian
+	# skip checking for changes and updating files that are frequently changed by Obsidian (or somehow report changes without us changing them)
 	git update-index --skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
 	git update-index --skip-worktree .obsidian/workspace.json
+	git update-index --skip-worktree .obsidian/plugins/obsidian-git/obsidian_askpass.sh
 	# also skip this file if you want to ex. edit font or other UI styles
 	# git update-index --skip-worktree ".obsidian/themes/ITS Theme/theme.css"
 
