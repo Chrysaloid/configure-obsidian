@@ -134,10 +134,56 @@ echo "Starting Obsidian launcher"
 
 cd /storage/emulated/0/Documents/Worldbuilding
 
-# discard local changes, get the new changes and start Obsidian if everything went OK
+# Files whose LOCAL version always wins over whatever comes from the remote.
+# They carry the --skip-worktree bit so git ignores the constant rewrites Obsidian
+# does to them, but that bit only hides OUR edits - it does not protect against
+# INCOMING ones. Verified behaviour when a commit upstream touches such a file:
+#   - git reset --hard HEAD leaves the file (and the bit) completely alone
+#   - git pull then aborts with "Your local changes ... would be overwritten by merge"
+# which would make every launch from then on fail until someone fixed it by hand.
+# So we save our copies, let the merge land normally, then put our copies back.
+# Add more paths here as needed - relative to the repo root, quoted, one per line.
+LOCAL_PRIORITY_FILES=(
+	".obsidian/workspace.json"
+	".obsidian/plugins/recent-files-obsidian/data.json"
+	".obsidian/plugins/obsidian-git/obsidian_askpass.sh"
+	# uncomment if you want to keep ex. a locally edited font or other UI styles
+	# ".obsidian/themes/ITS Theme/theme.css"
+)
+
+BACKUP_DIR=~/.tmp_curl_files/local_priority_backup
+
+# stash our versions away and make git treat those files normally again,
+# so that reset + pull can freely overwrite them
+rm -rf "$BACKUP_DIR"
+for file in "${LOCAL_PRIORITY_FILES[@]}"; do
+	[[ -f $file ]] || continue # not present locally (ex. new entry in the list) - nothing to preserve
+	mkdir --parents "$BACKUP_DIR/$(dirname "$file")"
+	cp --preserve "$file" "$BACKUP_DIR/$file"
+	# --no-skip-worktree errors out on untracked files, hence the guard
+	if git ls-files --error-unmatch -- "$file" > /dev/null 2>&1; then
+		git update-index --no-skip-worktree -- "$file"
+	fi
+done
+
+# discard local changes and get the new changes
 rm -rf .trash
 git reset --hard HEAD
 git pull
+
+# restore our versions on top of whatever arrived and hide them from git again
+for file in "${LOCAL_PRIORITY_FILES[@]}"; do
+	[[ -f "$BACKUP_DIR/$file" ]] || continue
+	mkdir --parents "$(dirname "$file")"
+	cp --preserve "$BACKUP_DIR/$file" "$file"
+	# a file deleted upstream stays as an untracked local copy - no bit to set on it
+	if git ls-files --error-unmatch -- "$file" > /dev/null 2>&1; then
+		git update-index --skip-worktree -- "$file"
+	fi
+done
+rm -rf "$BACKUP_DIR"
+
+# start Obsidian if everything went OK
 am start -n md.obsidian/md.obsidian.MainActivity
 
 termux-toast -s "Happy reading! 😄"

@@ -93,17 +93,12 @@ if [[ ! -d /storage/emulated/0/Documents/Worldbuilding ]]; then
 	gh repo clone Michal-Roman0/Worldbuilding
 	cd Worldbuilding
 
-	# skip checking for changes and updating files that are frequently changed by Obsidian (or somehow report changes without us changing them)
-	git update-index --skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
-	git update-index --skip-worktree .obsidian/workspace.json
-	git update-index --skip-worktree .obsidian/plugins/obsidian-git/obsidian_askpass.sh
-	# also skip this file if you want to ex. edit font or other UI styles
-	# git update-index --skip-worktree ".obsidian/themes/ITS Theme/theme.css"
-
-	# to undo above commands use the following commands
-	# git update-index --no-skip-worktree .obsidian/plugins/recent-files-obsidian/data.json
-	# git update-index --no-skip-worktree .obsidian/workspace.json
-	# git update-index --no-skip-worktree ".obsidian/themes/ITS Theme/theme.css"
+	# The --skip-worktree bits (so git ignores files that Obsidian rewrites constantly,
+	# like .obsidian/workspace.json) are NOT set here on purpose. The launcher run at the
+	# end of this script sets them from its own LOCAL_PRIORITY_FILES list, which is the
+	# single place to edit when a file has to be added to or removed from that set.
+	# To inspect them later: git ls-files -v .obsidian | grep '^S'
+	# To undo one by hand:   git update-index --no-skip-worktree <path>
 
 	echo ""
 fi
