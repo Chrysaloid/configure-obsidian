@@ -145,6 +145,7 @@ cd /storage/emulated/0/Documents/Worldbuilding
 # Add more paths here as needed - relative to the repo root, quoted, one per line.
 LOCAL_PRIORITY_FILES=(
 	".obsidian/workspace.json"
+	".obsidian/workspaces.json"
 	".obsidian/plugins/recent-files-obsidian/data.json"
 	".obsidian/plugins/obsidian-git/obsidian_askpass.sh"
 	# uncomment if you want to keep ex. a locally edited font or other UI styles
