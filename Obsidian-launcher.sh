@@ -153,35 +153,64 @@ LOCAL_PRIORITY_FILES=(
 
 BACKUP_DIR=~/.tmp_curl_files/local_priority_backup
 
-# stash our versions away and make git treat those files normally again,
-# so that reset + pull can freely overwrite them
-rm -rf "$BACKUP_DIR"
+# download the new commits without touching the working tree yet, so we can look at what
+# is coming before deciding whether any of the files above have to be saved at all
+git fetch
+
+# paths that the incoming commits change - empty string when we are already up to date.
+# @{u} is the upstream branch (origin/main), so this lists exactly what the merge below
+# will modify. -c core.quotepath=false keeps non-ASCII paths unescaped so that they can
+# be compared literally against the entries of LOCAL_PRIORITY_FILES
+CHANGED_FILES="$(git -c core.quotepath=false diff --name-only HEAD..@{u})"
+
+# save only those protected files that the incoming commits really touch - which is
+# almost always none of them, and then nothing is copied and no directory is created
+STASHED_FILES=()
 for file in "${LOCAL_PRIORITY_FILES[@]}"; do
-	[[ -f $file ]] || continue # not present locally (ex. new entry in the list) - nothing to preserve
+	[[ -f $file ]] || continue                            # not present locally (ex. new entry in the list) - nothing to preserve
+	grep -qxF -- "$file" <<< "$CHANGED_FILES" || continue # untouched upstream - the merge will not disturb it, leave it alone
+	if (( ${#STASHED_FILES[@]} == 0 )); then
+		rm -rf "$BACKUP_DIR" # first file of this run - clear anything an interrupted earlier run left behind
+	fi
 	mkdir --parents "$BACKUP_DIR/$(dirname "$file")"
 	cp --preserve "$file" "$BACKUP_DIR/$file"
-	# --no-skip-worktree errors out on untracked files, hence the guard
 	if git ls-files --error-unmatch -- "$file" > /dev/null 2>&1; then
+		# tracked: drop the bit so that reset + merge may freely overwrite it
 		git update-index --no-skip-worktree -- "$file"
+	else
+		# untracked here but added upstream - merge refuses to clobber such a file, and
+		# we already hold a copy of it, so get it out of the way
+		rm -f "$file"
 	fi
+	STASHED_FILES+=("$file")
 done
 
-# discard local changes and get the new changes
+# discard local changes and apply the commits fetched above
+# (git merge instead of git pull - the fetch already happened, and --no-edit stops git from
+# trying to open an editor for the merge message when the vault has local commits to merge)
 rm -rf .trash
 git reset --hard HEAD
-git pull
+git merge --no-edit @{u}
 
-# restore our versions on top of whatever arrived and hide them from git again
-for file in "${LOCAL_PRIORITY_FILES[@]}"; do
-	[[ -f "$BACKUP_DIR/$file" ]] || continue
-	mkdir --parents "$(dirname "$file")"
-	cp --preserve "$BACKUP_DIR/$file" "$file"
-	# a file deleted upstream stays as an untracked local copy - no bit to set on it
-	if git ls-files --error-unmatch -- "$file" > /dev/null 2>&1; then
-		git update-index --skip-worktree -- "$file"
+# put our versions back on top of whatever arrived
+if (( ${#STASHED_FILES[@]} > 0 )); then
+	for file in "${STASHED_FILES[@]}"; do
+		mkdir --parents "$(dirname "$file")"
+		cp --preserve "$BACKUP_DIR/$file" "$file"
+	done
+	rm -rf "$BACKUP_DIR"
+fi
+
+# Make sure every protected file is hidden from git again. One git call, no file I/O, so it
+# is cheap enough to run unconditionally - and it is what sets the bits in the first place on
+# a freshly cloned vault, as well as what restores the ones dropped by the loop above.
+# ls-files -v prints one "<tag> <path>" line per tracked file, where the tag is S for
+# skip-worktree; paths that are not tracked simply produce no line
+while IFS= read -r line; do
+	if [[ ${line:0:1} != "S" ]]; then
+		git update-index --skip-worktree -- "${line:2}"
 	fi
-done
-rm -rf "$BACKUP_DIR"
+done < <(git -c core.quotepath=false ls-files -v -- "${LOCAL_PRIORITY_FILES[@]}")
 
 # start Obsidian if everything went OK
 am start -n md.obsidian/md.obsidian.MainActivity
