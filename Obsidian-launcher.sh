@@ -36,6 +36,10 @@ handle_errors() {
 	local exit_code=$?
 	if [[ $exit_code != 0 ]]; then
 		local failReason
+		# state the failing line in the log itself, while stdout still goes through tee, so
+		# that a log pasted on its own is self-diagnosing - previously this number existed
+		# only in the dialog and the clipboard and got lost whenever those were not kept
+		echo "Line $_error_line produced error (exit code $exit_code)"
 		exec 1>&- 2>&- # close stdout and stderr, signaling EOF to tee
 		wait           # now tee sees EOF, flushes, and exits
 		failReason="Line $_error_line produced error. Whole script's output:"$'\n'"$(cat "$LOG_FILE")"
