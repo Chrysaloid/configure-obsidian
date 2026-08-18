@@ -26,10 +26,22 @@ ETAG_FILE="$SCRIPT_FILE.etag"
 TMP_FILE="$SCRIPT_FILE.tmp"
 LOG_FILE="LOG_FILE"
 
+# keep the real stdout and stderr on fds 3 and 4 so that they can be handed back before the
+# re-exec below - see the long comment there for what happens when they are not
+exec 3>&1 4>&2
+
 # redirect all subsequent stdout and stderr to $LOG_FILE while still printing to the terminal
 # must come before the trap so error messages are captured in the log too
 # also merge stderr and stdout
-exec > >(tee "$LOG_FILE") 2>&1
+if [[ $AFTER_UPDATE == "true" ]]; then
+	# continue the log that the pre-update stage started instead of truncating it, so that
+	# "Obsidian-launcher.sh was updated" survives into the log of the run that follows it
+	# (configure-obsidian.sh, the only other caller passing true, deletes the whole cache
+	# folder beforehand, so it always starts from an empty log anyway)
+	exec > >(tee -a "$LOG_FILE") 2>&1
+else
+	exec > >(tee "$LOG_FILE") 2>&1
+fi
 
 _error_line=0
 handle_errors() {
@@ -125,6 +137,17 @@ if [[ $AFTER_UPDATE == "false" ]]; then
 		# mv on the same filesystem is a single rename() syscall, so $FINAL_FILE is never missing or partial
 		mv "$TMP_FILE" "$FINAL_FILE"
 		chmod +x "$FINAL_FILE"
+
+		# Hand stdout and stderr back to the real ones before the swap. Without this, fd 1 is
+		# still the pipe to our tee when the replacement process forks ITS tee - the new tee
+		# inherits that pipe as its own stdout, so every line it writes to LOG_FILE is also
+		# forwarded to the old tee, which writes the same bytes into LOG_FILE a second time at
+		# whatever offset it had already reached. The result is a log with a duplicated tail
+		# spliced in mid-word. Restoring the fds makes the old tee see EOF; wait lets it flush
+		# and exit before the replacement process truncates the file
+		exec 1>&3 2>&4
+		wait
+
 		# exec replaces the current process entirely so nothing below this block runs
 		exec bash "$FINAL_FILE" true
 	fi
